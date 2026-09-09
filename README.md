@@ -1,4 +1,4 @@
-# كنوز من السنة والأسرار النبوية — Kunuz
+# كنوز من السنة النبوية — Kunuz
 
 A free, open-source encyclopedia of **140 authenticated Prophetic hadiths** ("treasures") curated from Sheikh Mahmoud Al-Masri's series *«كنوز من السنة»* and *«كنوز وأسرار»* — each with full text, narrator, source, grading, explanation, and a practical daily action.
 

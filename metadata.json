@@ -1,5 +1,5 @@
 {
-  "name": "كنوز من السنة والأسرار النبوية",
+  "name": "كنوز من السنة النبوية",
   "description": "تطبيق جامع وشامل لأحاديث وكنوز سلسلتي كنوز من السنة وكنوز وأسرار لفضيلة الشيخ محمود المصري، موثقة بالنص والشرح المباشر والتطبيق العملي.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

@@ -20,7 +20,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-[#fef08a]" />
             <h3 className="font-bold text-base sm:text-lg font-tajawal">
-              عن تطبيق كنوز من السنة والأسرار النبوية
+              عن تطبيق كنوز من السنة النبوية
             </h3>
           </div>
           <button

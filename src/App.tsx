@@ -161,7 +161,7 @@ export default function App() {
             <div className="relative z-10 max-w-3xl">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-xs font-semibold backdrop-blur-xs border border-white/20 mb-3 text-emerald-100">
                 <Sparkles className="w-3.5 h-3.5 text-[#fef08a]" />
-                <span>الموسوعة الشاملة لكنوز وأسرار السنة النبوية</span>
+                <span>الموسوعة الشاملة لكنوز السنة النبوية</span>
               </div>
 
               <h2 className="text-2xl sm:text-4xl font-extrabold font-tajawal tracking-tight leading-snug mb-3">
@@ -369,7 +369,7 @@ export default function App() {
               💎
             </div>
             <span className="font-bold text-[#065f46] text-sm">
-              كنوز من السنة والأسرار النبوية
+              كنوز من السنة النبوية
             </span>
           </div>
 
