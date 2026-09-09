@@ -1,7 +1,8 @@
 {
-  "name": "react-example",
+  "name": "kunuz",
   "private": true,
   "version": "0.0.0",
+  "license": "GPL-3.0-or-later",
   "type": "module",
   "packageManager": "pnpm@11.24.0",
   "scripts": {
