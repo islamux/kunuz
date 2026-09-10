@@ -15,7 +15,9 @@ import {
 } from 'lucide-react';
 import { Treasure, Chapter } from '../types';
 import { ChapterIcon } from './ChapterIcon';
-import { stripTashkeelForDisplay, formatTreasureForShare, speakArabicText, stopArabicSpeech } from '../utils/arabicUtils';
+import { stripTashkeelForDisplay } from '../utils/arabic';
+import { formatTreasureForShare } from '../utils/share';
+import { speakArabicText, stopArabicSpeech } from '../utils/speech';
 import confetti from 'canvas-confetti';
 
 interface TreasureCardProps {
@@ -117,7 +119,7 @@ export const TreasureCard: React.FC<TreasureCardProps> = ({
             </span>
 
             {chapter && (
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg ${chapter.color} border`}>
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg ${chapter.colorClasses} border`}>
                 <ChapterIcon icon={chapter.icon} className="h-3.5 w-3.5" />
                 <span>{chapter.shortName}</span>
               </span>

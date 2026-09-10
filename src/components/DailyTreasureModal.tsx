@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { X, Sparkles, Flame, Bookmark, Share2, Copy, Check, Volume2, VolumeX, ArrowLeft } from 'lucide-react';
 import { Treasure, Chapter } from '../types';
 import { ChapterIcon } from './ChapterIcon';
-import { stripTashkeelForDisplay, formatTreasureForShare, speakArabicText, stopArabicSpeech } from '../utils/arabicUtils';
+import { stripTashkeelForDisplay } from '../utils/arabic';
+import { formatTreasureForShare } from '../utils/share';
+import { speakArabicText, stopArabicSpeech } from '../utils/speech';
 
 interface DailyTreasureModalProps {
   treasure: Treasure | null;
@@ -90,7 +92,7 @@ export const DailyTreasureModal: React.FC<DailyTreasureModalProps> = ({
                 الكنز #{treasure.id}
               </span>
               {chapter && (
-                <span className={`px-2.5 py-1 text-xs font-medium rounded-lg ${chapter.color} border inline-flex items-center gap-1.5`}>
+                <span className={`px-2.5 py-1 text-xs font-medium rounded-lg ${chapter.colorClasses} border inline-flex items-center gap-1.5`}>
                   <ChapterIcon icon={chapter.icon} className="h-3.5 w-3.5" />
                   <span>{chapter.name}</span>
                 </span>

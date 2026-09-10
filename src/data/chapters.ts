@@ -7,7 +7,7 @@ export const CHAPTERS: Chapter[] = [
     shortName: 'أذكار اليوم والليلة',
     icon: 'Sun',
     description: 'الأوراد النبوية الحافظة في الصباح والمساء، أذكار النوم والاستيقاظ، والخروج، والسوق.',
-    color: 'emerald'
+    colorClasses: 'bg-emerald-50 text-emerald-700 border-emerald-200'
   },
   {
     id: 'prayers-mosques',
@@ -15,7 +15,7 @@ export const CHAPTERS: Chapter[] = [
     shortName: 'الصلوات والمساجد',
     icon: 'Compass',
     description: 'السنن الرواتب، صلاة الضحى، قيام الليل، الوتر، فضل الجماعة، مسجد قباء والمساجد الثلاثة.',
-    color: 'amber'
+    colorClasses: 'bg-amber-50 text-amber-700 border-amber-200'
   },
   {
     id: 'expiation-repentance',
@@ -23,7 +23,7 @@ export const CHAPTERS: Chapter[] = [
     shortName: 'المغفرة والتوبة',
     icon: 'Sparkles',
     description: 'سيد الاستغفار، محو الخطايا كزبد البحر، كفارة المجلس، التوبة المتجددة، وحسن الخاتمة.',
-    color: 'teal'
+    colorClasses: 'bg-teal-50 text-teal-700 border-teal-200'
   },
   {
     id: 'relief-ruqyah',
@@ -31,7 +31,7 @@ export const CHAPTERS: Chapter[] = [
     shortName: 'تفريج الكروب والرقية',
     icon: 'ShieldCheck',
     description: 'دعوة ذي النون، دعاء الكرب، كفاية الهم بالصلاة على النبي ﷺ، رقية جبريل، وسداد الديون.',
-    color: 'cyan'
+    colorClasses: 'bg-cyan-50 text-cyan-700 border-cyan-200'
   },
   {
     id: 'quran-virtues',
@@ -39,7 +39,7 @@ export const CHAPTERS: Chapter[] = [
     shortName: 'فضائل القرآن',
     icon: 'BookOpen',
     description: 'أعظم السور والآيات: الفاتحة، آية الكرسي، تبارك المنجية، الكهف، والإخلاص والمعوذتان.',
-    color: 'emerald'
+    colorClasses: 'bg-lime-50 text-lime-700 border-lime-200'
   },
   {
     id: 'morals-relations',
@@ -47,7 +47,7 @@ export const CHAPTERS: Chapter[] = [
     shortName: 'مكارم الأخلاق',
     icon: 'HeartHandshake',
     description: 'حسن الخلق، كظم الغيظ، كفالة اليتيم، عيادة المريض، صلة الأرحام، والذب عن الأعراض.',
-    color: 'rose'
+    colorClasses: 'bg-rose-50 text-rose-700 border-rose-200'
   },
   {
     id: 'charity-ongoing',
@@ -55,7 +55,7 @@ export const CHAPTERS: Chapter[] = [
     shortName: 'الصدقات والأجور الجارية',
     icon: 'Coins',
     description: 'السبع الجارية في القبر، سقي الماء، بناء المساجد، صدقة السر، وتشييع الجنائز.',
-    color: 'indigo'
+    colorClasses: 'bg-indigo-50 text-indigo-700 border-indigo-200'
   },
   {
     id: 'fasting-seasons',
@@ -63,7 +63,7 @@ export const CHAPTERS: Chapter[] = [
     shortName: 'الصيام والنفحات',
     icon: 'Moon',
     description: 'صيام عرفة، عاشوراء، الأيام البيض، ست من شوال، وأجر حجة بصحبة النبي في عمرة رمضان.',
-    color: 'purple'
+    colorClasses: 'bg-purple-50 text-purple-700 border-purple-200'
   },
   {
     id: 'manners-sunan',
@@ -71,6 +71,6 @@ export const CHAPTERS: Chapter[] = [
     shortName: 'الآداب والسنن',
     icon: 'ScrollText',
     description: 'السواك، رد التثاؤب، تشميت العاطس، إبطال الكوابيس، التسمية في الطعام، وأدعية الريح والمطر.',
-    color: 'amber'
+    colorClasses: 'bg-slate-50 text-slate-700 border-slate-200'
   }
 ];

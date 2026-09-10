@@ -26,7 +26,7 @@ export interface Chapter {
   shortName: string;
   icon: ChapterIconName;
   description: string;
-  color: string;
+  colorClasses: string;
 }
 
 export interface Treasure {
@@ -45,10 +45,6 @@ export interface Treasure {
   isSpecialDailyCandidate?: boolean;
 }
 
-export interface FilterOptions {
-  searchQuery: string;
-  selectedChapter: ChapterId | 'all';
-  onlyFavorites: boolean;
-  onlyCompletedToday: boolean;
-  selectedTag: string | null;
-}
+export type TabId = 'all' | 'chapters' | 'favorites';
+
+export type FontSize = 'normal' | 'large' | 'xlarge';

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Copy, Check, Share2, Sparkles, Download } from 'lucide-react';
 import { Treasure } from '../types';
-import { formatTreasureForShare } from '../utils/arabicUtils';
+import { formatTreasureForShare } from '../utils/share';
 
 interface ShareCardModalProps {
   treasure: Treasure | null;
