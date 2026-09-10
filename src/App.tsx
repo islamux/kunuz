@@ -7,7 +7,7 @@ import {
   getChapterById
 } from './data';
 import { Treasure, ChapterId } from './types';
-import { matchesSearch } from './utils/arabicUtils';
+import { matchesSearch } from './utils/arabic';
 import { Navbar } from './components/Navbar';
 import { TreasureCard } from './components/TreasureCard';
 import { ChapterFilter } from './components/ChapterFilter';

@@ -15,7 +15,9 @@ import {
 } from 'lucide-react';
 import { Treasure, Chapter } from '../types';
 import { ChapterIcon } from './ChapterIcon';
-import { stripTashkeelForDisplay, formatTreasureForShare, speakArabicText, stopArabicSpeech } from '../utils/arabicUtils';
+import { stripTashkeelForDisplay } from '../utils/arabic';
+import { formatTreasureForShare } from '../utils/share';
+import { speakArabicText, stopArabicSpeech } from '../utils/speech';
 import confetti from 'canvas-confetti';
 
 interface TreasureCardProps {

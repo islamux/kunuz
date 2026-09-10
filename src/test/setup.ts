@@ -23,6 +23,8 @@ Object.defineProperty(window, 'speechSynthesis', {
     pause: vi.fn(),
     resume: vi.fn(),
     getVoices: vi.fn(() => []),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
   },
 });
 
