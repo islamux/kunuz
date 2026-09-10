@@ -45,6 +45,6 @@ export interface Treasure {
   isSpecialDailyCandidate?: boolean;
 }
 
-export type TabId = 'all' | 'chapters' | 'favorites';
+export type TabId = 'all' | 'chapters' | 'favorites' | 'tasbeeh' | 'checklist';
 
 export type FontSize = 'normal' | 'large' | 'xlarge';
