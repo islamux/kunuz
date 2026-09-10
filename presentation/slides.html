@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kunuz — Technical Review, 60 min</title>
+<style>
+  /* ---- Design tokens: "the treasure manuscript" ---- */
+  :root {
+    --ink: #1C1F26;
+    --ink-soft: #4A5060;
+    --cream: #F7F1E3;
+    --cream-dim: #EFE6D0;
+    --gold: #C9A227; /* the single accent */
+    --code-bg: #262B33;
+    --font-display: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --font-body: "Segoe UI", system-ui, sans-serif;
+    --font-code: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    --notes-dock: 0px;
+    --stage-gap: 2.6vh;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body {
+    background: var(--ink);
+    color: var(--cream);
+    font-family: var(--font-body);
+  }
+  ::selection { background: rgba(201, 162, 39, 0.35); }
+  :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  /* ---- Deck: fixed stage, letterboxed on non-16:9 viewports ---- */
+  #deck {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: var(--ink);
+  }
+
+  .slide { display: none; }
+
+  .slide.active {
+    display: grid;
+    align-content: center;
+    justify-items: stretch;
+    gap: var(--stage-gap);
+    /* 16:9 stage with safe margins; shrinks when the notes dock is open */
+    width: min(100vw, calc((100vh - var(--notes-dock)) * 16 / 9));
+    height: min(calc(100vw * 9 / 16), 100vh - var(--notes-dock));
+    width: min(100vw, calc((100dvh - var(--notes-dock)) * 16 / 9));
+    height: min(calc(100vw * 9 / 16), 100dvh - var(--notes-dock));
+    padding: 5.5vh 6vw;
+    background: var(--cream);
+    color: var(--ink);
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(28, 31, 38, 0.35);
+  }
+
+  /* Slide typography defaults (content tasks inherit these) */
+  .slide h1, .slide h2, .slide h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: 1.12;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .slide h1 { font-size: clamp(2rem, 5vw + 0.9rem, 4.1rem); }
+  .slide h2 { font-size: clamp(1.55rem, 3.2vw + 0.75rem, 2.9rem); }
+  .slide h3 { font-size: clamp(1.2rem, 2vw + 0.6rem, 2rem); }
+  .slide p, .slide li { font-size: clamp(1rem, 1vw + 0.8rem, 1.5rem); line-height: 1.45; }
+  .slide p { margin: 0; }
+  .slide ul, .slide ol { margin: 0; padding-left: 1.5em; }
+  .slide li + li { margin-top: 0.5em; }
+  .slide li::marker { color: var(--gold); }
+  .slide small { font-size: 0.72em; color: var(--ink-soft); }
+
+  /* ---- Code blocks: dark manuscript margin, gold keyword accent ---- */
+  .code {
+    font-family: var(--font-code);
+    font-size: clamp(0.8rem, 0.85vw + 0.55rem, 1.15rem);
+    line-height: 1.55;
+    background: var(--code-bg);
+    color: var(--cream);
+    border-left: 3px solid var(--gold);
+    border-radius: 2px;
+    padding: 0.9em 1.1em;
+    margin: 0;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .code .k, .code b, .code strong { color: var(--gold); font-weight: 600; }
+  .code .c { opacity: 0.6; }
+
+  /* ---- Signature element: gold "data path" — dotted rule with diamond nodes ----
+     Reusable: <ol class="datapath"><li>label</li>…</ol> (or div children).
+     Each child becomes a node (gold diamond) on a thin dotted gold rule. */
+  .datapath {
+    --datapath-node: 0.6rem;
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: clamp(0.8rem, 0.7vw + 0.6rem, 1.05rem);
+    line-height: 1.3;
+  }
+  .datapath > * {
+    position: relative;
+    flex: 1 1 0;
+    min-width: 0;
+    display: grid;
+    justify-items: center;
+    gap: 0.55rem;
+    padding: 0 0.75rem;
+    text-align: center;
+  }
+  .datapath > *::before {
+    content: "";
+    position: relative;
+    z-index: 1;
+    width: var(--datapath-node);
+    height: var(--datapath-node);
+    background: var(--gold);
+    transform: rotate(45deg);
+  }
+  .datapath > *::after {
+    content: "";
+    position: absolute;
+    top: calc(var(--datapath-node) / 2 - 0.5px);
+    left: calc(50% + var(--datapath-node));
+    right: calc(-50% + var(--datapath-node));
+    border-top: 1px dotted var(--gold);
+  }
+  .datapath > :last-child::after { content: none; }
+  .datapath small { font-size: 0.8em; color: var(--ink-soft); }
+  .datapath b, .datapath strong { font-weight: 600; }
+
+  /* ---- Progress rail ---- */
+  #progress {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    z-index: 30;
+    background: linear-gradient(to right,
+      var(--gold) var(--fill, 0%),
+      rgba(247, 241, 227, 0.12) var(--fill, 0%));
+  }
+
+  /* ---- Slide index overlay ---- */
+  #index {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    display: grid;
+    place-items: center;
+    padding: 2rem;
+    background: rgba(28, 31, 38, 0.93);
+    overflow: auto;
+  }
+  #index[hidden] { display: none; }
+  #index ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+    gap: 0.3rem;
+    width: min(64rem, 92vw);
+    max-height: 82vh;
+    overflow: auto;
+  }
+  #index button {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.55rem 0.8rem;
+    font: 400 0.95rem/1.3 var(--font-body);
+    text-align: left;
+    color: var(--cream);
+    background: transparent;
+    border: 0;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  #index button:hover { color: var(--gold); }
+  #index button .n {
+    font-family: var(--font-code);
+    font-size: 0.8rem;
+    color: var(--gold);
+    min-width: 2ch;
+  }
+  #index button[aria-current="true"] {
+    background: rgba(201, 162, 39, 0.15);
+    box-shadow: inset 2px 0 0 var(--gold);
+  }
+  #index .index-empty {
+    margin: 0;
+    font: 400 1rem/1.5 var(--font-body);
+    color: var(--cream);
+    opacity: 0.7;
+  }
+
+  /* ---- Controls & HUD ---- */
+  .controls {
+    position: fixed;
+    right: 1rem;
+    bottom: calc(var(--notes-dock) + 1rem);
+    z-index: 50;
+    display: flex;
+    gap: 0.4rem;
+  }
+  .controls button {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 0.9em;
+    font: 600 0.95rem/1 var(--font-body);
+    color: var(--cream);
+    background: rgba(28, 31, 38, 0.72);
+    border: 1px solid rgba(247, 241, 227, 0.28);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .controls button:hover { color: var(--gold); border-color: var(--gold); }
+
+  .hud {
+    position: fixed;
+    left: 1rem;
+    bottom: calc(var(--notes-dock) + 1.1rem);
+    z-index: 50;
+    font-family: var(--font-code);
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    color: var(--cream);
+    opacity: 0.8;
+  }
+
+  /* ---- Speaker notes: docked below the active slide ---- */
+  .notes { display: none; }
+  body.show-notes { --notes-dock: 9.5rem; }
+  body.show-notes .slide.active .notes {
+    display: block;
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    height: var(--notes-dock);
+    z-index: 20;
+    background: var(--ink);
+    color: var(--cream);
+    border-top: 1px solid var(--gold);
+    padding: 1rem 1.5rem 1.25rem;
+    overflow-y: auto;
+    font: 400 0.95rem/1.55 var(--font-body);
+  }
+  body.show-notes .slide.active .notes:empty::after {
+    content: "No speaker notes for this slide.";
+    opacity: 0.55;
+  }
+
+  /* ---- Motion: a single restrained entrance, only when allowed ---- */
+  @media (prefers-reduced-motion: no-preference) {
+    .slide.active { animation: slide-in 0.35s ease both; }
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateY(1vh); }
+      to { opacity: 1; transform: none; }
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+    html { scroll-behavior: auto; }
+  }
+
+  /* ---- Print: every slide on its own page; chrome hidden ---- */
+  @media print {
+    .notes, #index, .controls { display: none; }
+    #progress, .hud { display: none; }
+    html, body { background: #fff; height: auto; }
+    #deck { position: static; display: block; overflow: visible; background: none; }
+    .slide, .slide.active {
+      display: block;
+      position: static;
+      width: auto;
+      height: auto;
+      min-height: 0;
+      margin: 0;
+      padding: 1.2cm 1.4cm;
+      overflow: visible;
+      box-shadow: none;
+      page-break-after: always;
+      break-after: page;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .slide:last-child { page-break-after: auto; break-after: auto; }
+  }
+
+  /* ---- Mobile: full-bleed scrolling column ---- */
+  @media (max-width: 640px) {
+    #deck { align-items: flex-start; overflow-y: auto; }
+    .slide.active {
+      width: 100%;
+      height: auto;
+      min-height: 100%;
+      padding: 3rem 1.25rem 5.5rem;
+      gap: 1rem;
+      overflow: visible;
+    }
+    .slide h1 { font-size: clamp(1.7rem, 8vw, 2.6rem); }
+    .slide h2 { font-size: clamp(1.35rem, 6.5vw, 2rem); }
+    .slide p, .slide li { font-size: 1rem; }
+    .datapath { flex-wrap: wrap; }
+    .datapath > * { flex: 1 1 45%; }
+    .controls { right: 0.5rem; bottom: calc(var(--notes-dock) + 0.5rem); gap: 0.3rem; }
+    .controls button { min-width: 40px; min-height: 40px; font-size: 0.85rem; }
+    .hud { left: 0.75rem; bottom: calc(var(--notes-dock) + 0.75rem); font-size: 0.75rem; }
+    body.show-notes { --notes-dock: 42vh; }
+    body.show-notes .slide.active { padding-bottom: calc(42vh + 3.5rem); }
+  }
+</style>
+</head>
+<body>
+<main id="deck" aria-live="polite">
+  <!-- SLIDES:START -->
+  <!-- ===== SLIDE 1 — Title ===== -->
+  <section class="slide" data-sec="opening" aria-label="Title">
+    <h1>Kunuz — Treasures from the Prophetic Sunnah</h1>
+    <h2 style="font-size:clamp(1.6rem,3.5vw+0.6rem,2.8rem);margin-top:0.3em">كنوز من السنة النبوية</h2>
+    <p>A free, open-source encyclopedia of 140 authenticated Prophetic hadiths</p>
+    <p style="margin-top:1.5em"><strong>60-Minute Technical Review</strong></p>
+    <aside class="notes">~1 min. Say: "this is a code-level review — every claim on the deck carries a facts.md row and a file:line anchor" (ground rule, facts.md:1-2). The headline numbers are test-verified, not README claims: 140 treasures at src/data/data.test.ts:39-42, 9 chapters at src/data/chapters.ts:3-76.</aside>
+  </section>
+
+  <!-- ===== SLIDE 2 — What is it? ===== -->
+  <section class="slide" data-sec="opening" aria-label="What is Kunuz?">
+    <h2>What is Kunuz?</h2>
+    <ul>
+      <li><strong>140 treasures</strong> across <strong>9 chapters</strong> — each treasure carries 7 required fields (title, hadith, narrator, source, grade, explanation, action)</li>
+      <li>Source: Sheikh Mahmoud Al-Masri (Abu Ammar) — series «كنوز من السنة» and «كنوز وأسرار»</li>
+      <li>Community-driven index — <em>not</em> an official publication of the Sheikh</li>
+    </ul>
+    <p style="margin-top:1em"><small>Cited: data.test.ts:39–42 (140 assertion); 35×4 count in part modules; README.md:7</small></p>
+    <aside class="notes">~1.5 min. Say: "140 is a test-enforced number, not a README claim — README is not trusted for counts (facts §1)." The 140 count is verified by src/data/data.test.ts:39–42: expect(ALL_TREASURES).toHaveLength(140); 4 part files × 35 records each (35/35/35/35 via rg, facts §1). 9 chapters defined in src/data/chapters.ts:3–76; per-chapter counts computed at runtime, not hardcoded (src/data/index.ts:17–31).</aside>
+  </section>
+
+  <!-- ===== SLIDE 3 — What problem? ===== -->
+  <section class="slide" data-sec="opening" aria-label="What problem does Kunuz solve?">
+    <h2>What problem does Kunuz solve?</h2>
+    <ul>
+      <li>Documented sunnah actions scattered across video series → one searchable, documented collection</li>
+      <li>Practical daily actions + tasbeeh + checklist = <strong>"act on it, not just read it"</strong></li>
+    </ul>
+    <aside class="notes">~1.5 min. Say: "the action features ship inside the same browsing experience — not separate apps, not separate links." Evidence: the tab-state union includes 'tasbeeh' and 'checklist' modes (src/App.tsx:33); TasbeehModal and DailyChecklistModal are imported components, not routed pages (src/App.tsx:14–18); the checklist/streak logic lives in src/utils/dailyTasks.ts:1–92.</aside>
+  </section>
+
+  <!-- ===== SLIDE 4 — What this talk is ===== -->
+  <section class="slide" data-sec="opening" aria-label="What this talk is — and isn't">
+    <h2>What this talk is — and isn't</h2>
+    <ul>
+      <li>Code-level understanding: decisions and trade-offs in the implementation</li>
+      <li><strong>Not</strong> a marketing deck — this is a technical review to prove the project owner genuinely understands what was written</li>
+    </ul>
+    <aside class="notes">~1 min. Say: "this is a review to prove the owner understands the code — if a number lacks a file:line, call it out." Ground rule: every number and path on the deck has a row in facts.md (facts.md:1–2) and a file:line anchor to the codebase.</aside>
+  </section>
+
+  <!-- ===== SLIDE 5 — Thesis ===== -->
+  <section class="slide" data-sec="thesis" aria-label="Thesis — the governing idea">
+    <h2>The governing idea</h2>
+    <p style="font-size:clamp(1.1rem,1.2vw+0.8rem,1.6rem);margin-top:0.8em">A knowledge app can be a <strong>static, verifiable artifact</strong>: typed data modules + pure functions + browser storage — <strong>no server, no database, no framework beyond React</strong></p>
+    <aside class="notes">~1.5 min. State the thesis verbatim and hold it as the spine of the talk. Say: "static, verifiable — you can read all 140 records and the code that renders them." Anchors: the aggregation modules src/data/index.ts:8–15; client-only rendering via createRoot (src/main.tsx:7); no server/DB anywhere (facts §4: zero hydrateRoot, no SSR).</aside>
+  </section>
+
+  <!-- ===== SLIDE 6 — Thesis: the data path ===== -->
+  <section class="slide" data-sec="thesis" aria-label="Thesis — the data path">
+    <h2>The data path</h2>
+    <ol class="datapath">
+      <li><strong>data</strong><br><small>4 part modules</small></li>
+      <li><strong>normalize</strong><br><small>removeTashkeel</small></li>
+      <li><strong>filter</strong><br><small>useMemo in App</small></li>
+      <li><strong>UI</strong><br><small>9 components</small></li>
+      <li><strong>persist</strong><br><small>localStorage</small></li>
+    </ol>
+    <p style="margin-top:1em"><small>src/data/index.ts:8–13 → src/utils/arabic.ts:4–27 → src/App.tsx:94–121 → components → localStorage</small></p>
+    <aside class="notes">~2 min. Walk the pipeline top to bottom: data src/data/treasuresPart1.ts:3 → normalize src/utils/arabic.ts:4–27 → filter src/App.tsx:94–121 → UI components (9 in src/components/, imports at src/App.tsx:11–18) → persist in localStorage (sunnah-favorites at src/App.tsx:45). Say: "every feature in this app lives on this single pipeline — that is the architecture."</aside>
+  </section>
+
+  <!-- ===== SLIDE 7 — Origin: AI Studio heritage ===== -->
+  <section class="slide" data-sec="decisions" aria-label="Decision 1 — AI Studio template heritage">
+    <h2>Decision 1: AI Studio template heritage</h2>
+    <ul>
+      <li><strong>Kept:</strong> vite.config.ts:8–64 media middleware (dev-only); :75–81 DISABLE_HMR for agent-edit mode</li>
+      <li><strong>Leftover deps:</strong> @google/genai, express, dotenv — declared in package.json but never imported</li>
+      <li><strong>Cost:</strong> aistudioMediaPlugin is dead weight in production; unused deps inflate install</li>
+    </ul>
+    <aside class="notes">~2 min. Say: "this config shipped with the AI Studio template — the media middleware is dev-server-only, so production builds are unaffected but the config keeps carrying it." vite.config.ts:8–64 (aistudioMediaPlugin, configureServer at :11–12), :75–81 (DISABLE_HMR). Behind it sit the dead AI Studio deps express, @google/genai, dotenv (package.json:26,19,25) with template provenance in metadata.json — facts §9 gives the grep evidence.</aside>
+  </section>
+
+  <!-- ===== SLIDE 8 — Data as typed TS modules ===== -->
+  <section class="slide" data-sec="decisions" aria-label="Decision 2 — Data as typed TS modules">
+    <h2>Decision 2: Typed TS modules, not JSON fetch</h2>
+    <ul>
+      <li><strong>Chosen:</strong> 4 part files (TREASURES_PART_1..4) — typed Treasure[] arrays, imported at build time</li>
+      <li><strong>Alternative:</strong> JSON fetch or DB/CRM — runtime dependency, network round-trip</li>
+      <li><strong>Why:</strong> compile-time type safety, zero runtime fetch, tree-shakeable, works offline by default</li>
+      <li><strong>Cost:</strong> content changes require rebuild; no dynamic loading without refactoring</li>
+    </ul>
+    <p style="margin-top:0.8em"><small>src/types.ts:32–46 (Treasure interface) · src/data/treasuresPart1.ts:3 (TREASURES_PART_1: Treasure[])</small></p>
+    <aside class="notes">~2 min. Say: "the whole dataset is ~2k lines of typed TS that compile — the compiler is the first line of defense over the content." Treasure interface src/types.ts:32–46 (7 required fields, 13 total); parts spread into ALL_TREASURES at src/data/index.ts:8–13; every record checked for all 7 non-empty fields at data.test.ts:45–52. Cost to acknowledge: content updates require a rebuild (facts §1, §8 — the data compiles into the bundle).</aside>
+  </section>
+
+  <!-- ===== SLIDE 9 — React 19 CSR SPA, no router ===== -->
+  <section class="slide" data-sec="decisions" aria-label="Decision 3 — React 19 CSR SPA, no router">
+    <h2>Decision 3: React 19 CSR, no router</h2>
+    <ul>
+      <li><strong>Chosen:</strong> React 19 CSR SPA — createRoot only (no hydrateRoot, no SSR)</li>
+      <li><strong>Navigation:</strong> tab/modal state in App — no router package at all</li>
+      <li><strong>Cost:</strong> no deep-linking to specific treasures; no browser back/forward for navigation</li>
+    </ul>
+    <p style="margin-top:0.8em"><small>src/main.tsx:7 (createRoot) · src/App.tsx:33 (tab state union) · src/App.tsx:127–149 (tab handling)</small></p>
+    <aside class="notes">~2 min. Say: "zero router, zero context, zero Redux — three negations you can verify from the CLI." State: 9 useState variables at src/App.tsx:33–57; two module-level pub/sub stores at src/utils/dailyTasks.ts:30–55 and src/utils/speech.ts:1–7; no router package and no createContext/useContext per rg (facts §4, §9). The cost: no deep links, no shareable filtered views.</aside>
+  </section>
+
+  <!-- ===== SLIDE 10 — Tailwind v4 + Vercel static ===== -->
+  <section class="slide" data-sec="decisions" aria-label="Decision 4 — Tailwind v4 and Vercel static hosting">
+    <h2>Decision 4: Tailwind v4 + Vercel static</h2>
+    <ul>
+      <li><strong>Tailwind v4</strong> via Vite plugin — no tailwind.config or postcss.config</li>
+      <li><strong>Vercel</strong> static hosting: SPA rewrite + immutable caching for /assets/*</li>
+    </ul>
+    <pre class="code">vercel.json<span class="k">:</span>
+  "Cache-Control"<span class="k">:</span> <span class="c">"public, max-age=31536000, immutable"</span></pre>
+    <p style="margin-top:0.8em"><small>vite.config.ts:69 (plugins) · vercel.json:12–16 (immutable cache)</small></p>
+    <aside class="notes">~1.5 min. Say: "deploy is one command to a static host with immutable asset caching — nothing to operate." Tailwind v4 loads via @import "tailwindcss" at src/index.css:1, plugin wired in vite.config.ts:69; no tailwind.config/postcss.config exist (facts §2). Vercel config: vercel.json:3–6 (framework/build/output), :7–9 (install), :10–16 (headers); deploy npx vercel deploy --prod (package.json:16).</aside>
+  </section>
+
+  <!-- ===== SLIDE 11 — Mental model: data flow ===== -->
+  <section class="slide" data-sec="mental-model" aria-label="Mental model — complete data flow">
+    <h2>Mental model: the data flow</h2>
+    <ol class="datapath">
+      <li><strong>4 part files</strong><br><small>TREASURES_PART_1..4</small></li>
+      <li><strong>aggregation</strong><br><small>ALL_TREASURES, CHAPTER_COUNTS</small></li>
+      <li><strong>App state</strong><br><small>filter · search · favorites</small></li>
+      <li><strong>9 components</strong><br><small>TreasureCard, Navbar, etc.</small></li>
+      <li><strong>localStorage</strong><br><small>4 keys persist state</small></li>
+    </ol>
+    <aside class="notes">~2 min. Recite the flow as one sentence: "parts → aggregation → filtered view → grid → four localStorage keys." Anchors: src/data/treasuresPart1.ts:3 → src/data/index.ts:8–13 (spread) and :17–31 (CHAPTER_COUNTS) → src/App.tsx:94–121 (filteredTreasures useMemo) → grid src/App.tsx:319–340 → keys: sunnah-favorites src/App.tsx:45, sunnah-tasks-&lt;date&gt; src/utils/dailyTasks.ts:3, sunnah-streak :1, sunnah-streak-last :2.</aside>
+  </section>
+
+  <!-- ===== SLIDE 12 — Main grid + chapter filter ===== -->
+  <section class="slide" data-sec="product" aria-label="The treasure grid and chapter filter">
+    <h2>The treasure grid</h2>
+    <ul>
+      <li>Responsive grid: 1 col mobile, 2 cols ≥md — renders one <code>TreasureCard</code> per filtered result (<code>src/App.tsx:319–340</code>)</li>
+      <li><code>ChapterFilter</code> — 10 pills: "All" (140) + 9 chapter buttons, each showing its count; props: <code>selectedChapter</code>, <code>onSelectChapter</code>, <code>variant: 'chips' | 'grid'</code></li>
+      <li>Filter state lives in App: <code>selectedChapter</code> at <code>src/App.tsx:34</code>, <code>activeTab</code> at <code>:33</code></li>
+      <li>Chapter counts are computed at runtime — not hardcoded (<code>src/data/index.ts:17–31</code> loops ALL_TREASURES)</li>
+    </ul>
+    <p style="margin-top:0.8em"><small>src/components/ChapterFilter.tsx:12–121 (chips variant) · src/App.tsx:241–250 (filter bar) · src/App.tsx:218–238 (grid variant in chapters tab)</small></p>
+    <aside class="notes">~2 min. Say: "one component, two variants, driven purely by props — no context, no redux." Anchor: chips variant src/components/ChapterFilter.tsx:12–121, grid variant branches at :21–23; the filter bar renders at src/App.tsx:241–250; counts are computed at runtime in src/data/index.ts:17–31, so no hardcoded chapter numbers. State flows down from src/App.tsx:34 (selectedChapter).</aside>
+  </section>
+
+  <!-- ===== SLIDE 13 — TreasureCard anatomy ===== -->
+  <section class="slide" data-sec="product" aria-label="TreasureCard anatomy">
+    <h2>TreasureCard anatomy</h2>
+    <ul>
+      <li><code>&lt;article&gt;</code> per treasure — id <code>treasure-card-{id}</code></li>
+      <li><strong>Header:</strong> chapter badge + treasure number + time context + bookmark + share buttons</li>
+      <li><strong>Title:</strong> <code>treasure.title</code> — bold, Arabic font</li>
+      <li><strong>Hadith frame:</strong> <code>treasure.hadith</code> in serif font, with narrator (<code>treasure.narrator</code>) and source + grade (<code>treasure.source</code>, <code>treasure.grade</code>)</li>
+      <li><strong>Action box:</strong> <code>treasure.action</code> — practical daily application</li>
+      <li><strong>Collapsible explanation:</strong> <code>treasure.explanation</code> — toggle with chevron</li>
+      <li><strong>Tags:</strong> <code>treasure.tags</code> — clickable, filter by tag</li>
+      <li><strong>Footer:</strong> listen (TTS) + copy (clipboard) buttons</li>
+    </ul>
+    <p style="margin-top:0.8em"><small>src/components/TreasureCard.tsx:106–339 · Treasure interface: src/types.ts:32–46</small></p>
+    <aside class="notes">~2 min. Point at the on-screen anatomy and say: "one article per treasure, and every field on the interface has a job in it." Anchors: article element src/components/TreasureCard.tsx:107–110; interface src/types.ts:32–46; 7 required non-empty fields defined at data.test.ts:36 and asserted at :45–52; repeat counter only when repeatCount > 1; tags optional.</aside>
+  </section>
+
+  <!-- ===== SLIDE 14 — Modals inventory ===== -->
+  <section class="slide" data-sec="product" aria-label="Five modals inventory">
+    <h2>Five modals</h2>
+    <ul>
+      <li><strong>DailyTreasureModal</strong> — "treasure of the day" with full details, listen, copy, share (<code>src/components/DailyTreasureModal.tsx:193 lines</code>)</li>
+      <li><strong>TasbeehModal</strong> — interactive circular counter with haptic vibration + optional click sound via AudioContext (<code>src/components/TasbeehModal.tsx:190 lines</code>)</li>
+      <li><strong>DailyChecklistModal</strong> — 8 sunnah tasks checklist, streak display, confetti on completion (<code>src/components/DailyChecklistModal.tsx:187 lines</code>)</li>
+      <li><strong>ShareCardModal</strong> — visual poster card preview + copy text + WhatsApp + Telegram deep links (<code>src/components/ShareCardModal.tsx:137 lines</code>)</li>
+      <li><strong>AboutModal</strong> — project description, 9 chapters listing, Sheikh attribution (<code>src/components/AboutModal.tsx:107 lines</code>)</li>
+    </ul>
+    <aside class="notes">~2 min. Say: "five modals, one shared visual pattern, opened from local state — not from URLs." Anchors: imports src/App.tsx:14–18; open state as boolean/ref useState at src/App.tsx:53–57; sizes 193/190/187/137/107 lines (slide). Honest gap: none of the modals has an interaction test (facts §7).</aside>
+  </section>
+
+  <!-- ===== SLIDE 15 — CSR walkthrough ===== -->
+  <section class="slide" data-sec="deep" aria-label="CSR walkthrough — how the page renders">
+    <h2>CSR walkthrough</h2>
+    <ul>
+      <li><code>index.html:17</code> — empty <code>&lt;div id="root"&gt;</code>; no pre-rendered content</li>
+      <li><code>index.html:18</code> — <code>&lt;script type="module" src="/src/main.tsx"&gt;</code></li>
+      <li>JS bundle executes in the browser; React builds the entire DOM tree client-side</li>
+    </ul>
+    <pre class="code"><span class="c">// verbatim from src/main.tsx:1-12</span>
+import {<span class="k">StrictMode</span>} from 'react';
+import {<span class="k">createRoot</span>} from 'react-dom/client';
+import {SpeedInsights} from '@vercel/speed-insights/react';
+import App from './App.tsx';
+import './index.css';
+
+<span class="k">createRoot</span>(document.getElementById('root')!).<span class="k">render</span>(
+  &lt;StrictMode&gt;
+    &lt;App /&gt;
+    &lt;SpeedInsights /&gt;
+  &lt;/StrictMode&gt;,
+);</pre>
+    <aside class="notes">~2 min. Walk the two lines that matter: index.html:17 (empty #root) and :18 (module script). Say: "nothing is paintable until the JS executes — that is the price of CSR, and slide 28 will price it." Anchor: the verbatim entry is src/main.tsx:1–12; pure client-side createRoot, zero hydrateRoot (facts §4).</aside>
+  </section>
+
+  <!-- ===== SLIDE 16 — CSR vs SSR vs Hydration contrast ===== -->
+  <section class="slide" data-sec="deep" aria-label="CSR vs SSR vs Hydration contrast table">
+    <h2>CSR vs SSR vs Hydration</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:clamp(0.75rem,0.8vw+0.5rem,1.05rem);line-height:1.4">
+      <thead>
+        <tr style="border-bottom:2px solid var(--gold);text-align:left">
+          <th style="padding:0.4em 0.6em"></th>
+          <th style="padding:0.4em 0.6em">Server sends</th>
+          <th style="padding:0.4em 0.6em">Content appears</th>
+          <th style="padding:0.4em 0.6em">react-dom call</th>
+          <th style="padding:0.4em 0.6em">Mismatch risk</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #e5e2d5">
+          <td style="padding:0.4em 0.6em;font-weight:700;color:var(--gold)">Kunuz</td>
+          <td style="padding:0.4em 0.6em">Empty &lt;div id="root"&gt;</td>
+          <td style="padding:0.4em 0.6em">After JS bundle loads</td>
+          <td style="padding:0.4em 0.6em"><code>createRoot</code></td>
+          <td style="padding:0.4em 0.6em"><strong>None</strong></td>
+        </tr>
+        <tr style="border-bottom:1px solid #e5e2d5">
+          <td style="padding:0.4em 0.6em;font-weight:700">generic SSR</td>
+          <td style="padding:0.4em 0.6em">Full HTML string</td>
+          <td style="padding:0.4em 0.6em">Immediately (paintable)</td>
+          <td style="padding:0.4em 0.6em"><code>hydrateRoot</code></td>
+          <td style="padding:0.4em 0.6em">Server vs client render</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="margin-top:0.6em"><small>Not this codebase: the "generic SSR" row is a teaching contrast, not a Kunuz feature</small></p>
+    <aside class="notes">~3 min. This is the conceptual payoff — deliver the three points slowly. Say: "hydrate = attach to an existing tree; createRoot = build from scratch." Anchor: the Kunuz row is createRoot at src/main.tsx:7; the generic-SSR row is a teaching contrast, not this codebase — zero hydrateRoot matches (facts §4). Concrete trap from this codebase: a useState lazy initializer reading localStorage (src/App.tsx:43–50) is safe in CSR but would be a hydration mismatch under SSR.</aside>
+  </section>
+
+  <!-- ===== SLIDE 17 — The pattern that proves understanding ===== -->
+  <section class="slide" data-sec="deep" aria-label="The pattern that proves understanding">
+    <h2>The pattern that proves understanding</h2>
+    <p style="margin-bottom:0.6em"><strong>Safe in CSR — would break in SSR:</strong></p>
+    <pre class="code"><span class="c">// verbatim from src/App.tsx:42-50</span>
+// Favorites stored in localStorage
+const [favorites, setFavorites] = useState&lt;number[]&gt;(() =&gt; {
+  <span class="k">try</span> {
+    const saved = localStorage.<span class="k">getItem</span>('sunnah-favorites');
+    return saved ? JSON.parse(saved) : [];
+  } <span class="k">catch</span> {
+    return [];
+  }
+});</pre>
+    <p style="margin-top:0.8em;margin-bottom:0.6em"><strong>Post-mount read — always safe:</strong></p>
+    <pre class="code"><span class="c">// verbatim from src/components/DailyChecklistModal.tsx:32-48</span>
+useEffect(() =&gt; {
+  <span class="k">try</span> {
+    const todayKey = `sunnah-tasks-${new Date().toISOString().slice(0, 10)}`;
+    const savedTasks = localStorage.<span class="k">getItem</span>(todayKey);
+    <span class="k">if</span> (savedTasks) {
+      setCompleted(JSON.parse(savedTasks));
+    }
+    <span class="k">const</span> savedStreak = localStorage.<span class="k">getItem</span>('sunnah-streak');
+    <span class="k">if</span> (savedStreak) {
+      setStreak(parseInt(savedStreak, 10));
+    }
+  } <span class="k">catch</span> { }
+}, []);</pre>
+    <aside class="notes">~3 min. Say: "the initializer answers 'what is the first value?'; the effect answers 'now that we are mounted, what does the browser say?'" Both verbatim blocks are on screen: src/App.tsx:42–50 and src/components/DailyChecklistModal.tsx:32–48. Key line: the try/catch on parse at src/App.tsx:44–49 returns [] on corrupt JSON instead of crashing.</aside>
+  </section>
+
+  <!-- ===== SLIDE 18 — State management map ===== -->
+  <section class="slide" data-sec="deep" aria-label="State management map">
+    <h2>State management map</h2>
+    <ul>
+      <li><strong>App-level useState</strong> — 9 state variables in <code>src/App.tsx:33–57</code> (activeTab, selectedChapter, searchQuery, selectedTag, fontSize, showTashkeel, favorites, modal states)</li>
+      <li><strong>Props down</strong> — all child components receive state via props (no prop drilling beyond 1 level)</li>
+      <li><strong>Module-level pub/sub</strong> — <code>dailyTasks.ts:30–55</code> (tasks + streak) and <code>speech.ts:1–7</code> (TTS listeners)</li>
+      <li><strong>No Context, no Redux</strong> — <code>rg "createContext|useContext" src/</code> → exit 1, zero matches</li>
+      <li><strong>4 localStorage keys</strong> as persistence layer (§5 facts sheet)</li>
+    </ul>
+    <p style="margin-top:0.8em"><small>App.tsx:33–57 (state) · dailyTasks.ts:30–55 (pub/sub store) · speech.ts:1–7 (listener Set)</small></p>
+    <aside class="notes">~2 min. Say: "three tiers — component state for the UI, module stores for shared domain state, localStorage for time." Anchors: the useState block src/App.tsx:33–57; pub/sub stores src/utils/dailyTasks.ts:30–55 and src/utils/speech.ts:1–7; the 4 persistence keys are catalogued in facts §5. Negative evidence: rg createContext|useContext over src/ exits 1 (facts §4).</aside>
+  </section>
+
+  <!-- ===== SLIDE 19 — Arabic search pipeline ===== -->
+  <section class="slide" data-sec="deep" aria-label="Arabic search pipeline">
+    <h2>Arabic search pipeline</h2>
+    <pre class="code"><span class="c">// verbatim from src/utils/arabic.ts:4-17</span>
+export function <span class="k">removeTashkeel</span>(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(<span class="k">/\u0640</span>/g, '')           <span class="c">// tatweel (kashida)</span>
+    .replace(<span class="k">[\u064B-\u065F\u0670]</span>/g, '') <span class="c">// harakat</span>
+    .replace(<span class="k">[إأآٱ]</span>/g, 'ا')          <span class="c">// alef variants → alef</span>
+    .replace(<span class="k">ة</span>/g, 'ه')               <span class="c">// teh marbuta → heh</span>
+    .replace(<span class="k">ى</span>/g, 'ي');              <span class="c">// alef maqsura → yeh</span>
+}</pre>
+    <pre class="code" style="margin-top:0.8em"><span class="c">// verbatim from src/utils/arabic.ts:22-27</span>
+export function <span class="k">matchesSearch</span>(content: string, query: string): boolean {
+  if (!query.trim()) return true;
+  const cleanContent = <span class="k">removeTashkeel</span>(content.toLowerCase());
+  const cleanQuery = <span class="k">removeTashkeel</span>(query.toLowerCase().trim());
+  return cleanContent.includes(cleanQuery);
+}</pre>
+    <aside class="notes">~2.5 min. Bench-demo the difference in the live app: a query with diacritics resolving to a matching record is removeTashkeel doing its job. Say: "substring containment is enough for 140 curated records — no index, no ranking." Anchors: removeTashkeel src/utils/arabic.ts:4–17, matchesSearch :22–27; search coverage of concatenated fields src/App.tsx:111–117; 12 tests in src/utils/arabic.test.ts (facts §7).</aside>
+  </section>
+
+  <!-- ===== SLIDE 20 — Data integrity invariants ===== -->
+  <section class="slide" data-sec="deep" aria-label="Data integrity invariants">
+    <h2>Data integrity invariants</h2>
+    <p style="margin-bottom:0.6em"><code>src/data/data.test.ts</code> — 11 assertions:</p>
+    <ul>
+      <li><strong>:39–42</strong> — exactly 140 treasures, ids 1..140, no duplicates</li>
+      <li><strong>:45–52</strong> — all 7 required fields non-empty (title, hadith, narrator, source, grade, explanation, action)</li>
+      <li><strong>:54–58</strong> — every treasure has a valid chapterId (from 9 VALID_CHAPTER_IDS)</li>
+      <li><strong>:62–65</strong> — CHAPTER_COUNTS sums to TOTAL_TREASURES</li>
+      <li><strong>:67–71</strong> — every valid chapter id has a count entry</li>
+      <li><strong>:75–85</strong> — chapter colorClasses non-empty, icon names valid</li>
+      <li><strong>:89–91</strong> — getDailyTreasure deterministic within same day</li>
+      <li><strong>:93–96</strong> — daily treasure is a member of ALL_TREASURES</li>
+      <li><strong>:99–111</strong> — random treasure membership + variety over 100 calls</li>
+    </ul>
+    <p style="margin-top:0.6em"><small>4 part files × 35 treasures = 140 total</small></p>
+    <aside class="notes">~2.5 min. Say: "the suite proves the shape of the data, not the truth of the hadiths — those are two different claims." Anchors: ids 1..140, no duplicates data.test.ts:39–42; 7 required fields non-empty :45–52; valid chapterIds :54–58; counts sum :62–65; daily determinism :89–91; random variety :99–111. The "100% authentic" line is UI copy at src/App.tsx:199–213 — the facts §1 caution says don't present it as test-verified.</aside>
+  </section>
+
+  <!-- ===== SLIDE 21 — Daily treasure determinism ===== -->
+  <section class="slide" data-sec="deep" aria-label="Daily treasure determinism">
+    <h2>Daily treasure determinism</h2>
+    <pre class="code"><span class="c">// verbatim from src/data/index.ts:48-55</span>
+export function <span class="k">getDailyTreasure</span>(): Treasure {
+  const today = new Date();
+  const dayOfYear = Math.floor(
+    (today.getTime() - new Date(today.getFullYear(), 0, 0).getTime())
+    / 1000 / 60 / 60 / 24
+  );
+  const index = Math.abs(dayOfYear) % ALL_TREASURES.length;
+  return ALL_TREASURES[index];
+}</pre>
+    <ul>
+      <li>Math: <code>dayOfYear % 140</code> — deterministic for the same calendar day</li>
+      <li>Test-verified: <code>data.test.ts:89–91</code> asserts <code>getDailyTreasure().id === getDailyTreasure().id</code></li>
+      <li><strong>Timezone caveat:</strong> uses local <code>new Date()</code> — the "same" treasure may differ across timezones at day boundaries</li>
+    </ul>
+    <aside class="notes">~2 min. Say: "same day, same treasure — within one timezone. Across timezones it can differ; that is a disclosed trade-off, not a bug." Anchor: dayOfYear % ALL_TREASURES.length at src/data/index.ts:48–55; same-day determinism test-asserted at data.test.ts:89–91; the UTC-vs-local divergence also affects the checklist date key (src/utils/dailyTasks.ts:5–9 vs src/components/DailyChecklistModal.tsx:35).</aside>
+  </section>
+
+  <!-- ===== SLIDE 22 — Streak state machine ===== -->
+  <section class="slide" data-sec="deep" aria-label="Streak state machine">
+    <h2>Streak state machine</h2>
+    <pre class="code"><span class="c">// verbatim from src/utils/dailyTasks.ts:73-79 (recordStreakOnCompletion)</span>
+const last = localStorage.<span class="k">getItem</span>(STREAK_LAST_KEY);
+if (last === today) <span class="k">return</span>;          <span class="c">// already recorded today — no-op</span>
+const current = Number(localStorage.<span class="k">getItem</span>(STREAK_KEY) ?? '0');
+const yesterday = localDateKey(addDays(new Date(), -1));
+const next = last === yesterday ? current + 1 : 1; <span class="c">// yesterday → increment, stale → reset</span></pre>
+    <ul>
+      <li><strong>Today</strong> — no-op (already counted)</li>
+      <li><strong>Yesterday</strong> — increment streak by 1</li>
+      <li><strong>Stale</strong> (≥2 days gap) — reset to 1</li>
+    </ul>
+    <p style="margin-top:0.6em"><small>Tests: src/utils/dailyTasks.test.ts:71–126 (4 streak branches + 1 no-op when not all complete)</small></p>
+    <aside class="notes">~2.5 min. Trace the three branches on the verbatim block: today = no-op, yesterday = +1, stale = reset to 1. Say: "a streak dies on a single missed day — deliberately, to keep the habit honest." Anchors: recordStreakOnCompletion src/utils/dailyTasks.ts:73–79, getEffectiveStreak :83–91; the bare localStorage writes in the streak path (no try/catch) are a known wart (facts §5); 4 streak branches covered at dailyTasks.test.ts:71–126.</aside>
+  </section>
+
+  <!-- ===== SLIDE 23 — Browser API features ===== -->
+  <section class="slide" data-sec="deep" aria-label="Browser API features and graceful degradation">
+    <h2>Browser API features</h2>
+    <ul>
+      <li><strong>TTS:</strong> Web Speech API (<code>src/utils/speech.ts:26–72</code>) — <code>SpeechSynthesisUtterance</code> with <code>lang='ar-SA'</code>, <code>rate=0.92</code>; returns false if <code>window.speechSynthesis</code> absent</li>
+      <li><strong>Share:</strong> Clipboard API + deep links (<code>src/utils/share.ts:6–25</code>) — <code>navigator.clipboard.writeText()</code>, WhatsApp/Telegram URL scheme</li>
+      <li><strong>Tasbeeh:</strong> Haptic vibration + optional sound (<code>src/components/TasbeehModal.tsx:42–50</code>) — <code>navigator.vibrate(25)</code> + AudioContext sine oscillator click; both wrapped in try/catch</li>
+      <li><strong>Confetti:</strong> canvas-confetti library (<code>package.json:24</code>) — visual celebration on completion</li>
+      <li>All degrade gracefully — no app crash if APIs are absent</li>
+    </ul>
+    <aside class="notes">~2 min. Say: "every progressive enhancement degrades to a no-op — the app never crashes because an API is absent." Anchors: TTS guard src/utils/speech.ts:26–72 (probe at :32); share formatting + deep links src/utils/share.ts:6–25; vibrate + try/catch src/components/TasbeehModal.tsx:42–50, AudioContext click :25–39; clipboard failure tolerated by the outer try/catch in TreasureCard. Caveat: speechSynthesis is mocked in tests (src/test/setup.ts:4–29), so real voice selection is untested.</aside>
+  </section>
+
+  <!-- ===== SLIDE 24 — Performance reality ===== -->
+  <section class="slide" data-sec="deep" aria-label="Performance reality">
+    <h2>Performance reality</h2>
+    <ul>
+      <li><strong>Bundle:</strong> JS 454.79 kB (gzip 128.69 kB), CSS 42.75 kB (gzip 8.08 kB) — total dist/ 497K</li>
+      <li><strong>Immutable cache:</strong> <code>vercel.json:12–16</code> — <code>Cache-Control: public, max-age=31536000, immutable</code> for /assets/*</li>
+      <li><strong>Analytics:</strong> Vercel Speed Insights in <code>src/main.tsx:3,10</code></li>
+      <li><strong>What is NOT done:</strong> <code>rg "lazy|Suspense|import(" src/</code> → zero matches — <strong>no code splitting, no lazy loading</strong></li>
+      <li>Single JS chunk; 140 typed data arrays bundled inline at build time</li>
+    </ul>
+    <p style="margin-top:0.8em"><small>Bundle: pnpm build output · vercel.json:12–16 (headers) · src/main.tsx:3 (SpeedInsights import)</small></p>
+    <aside class="notes">~2 min. Say: "one bundle, one static host, immutable cache — and no code splitting, which is the honest counterpoint." Anchors (facts §8, dated 2026-09-10 snapshot — rerun pnpm build for fresh numbers): dist/ JS 454.79 kB / gzip 128.69, CSS 42.75 kB / gzip 8.08, total dist/ 497K; the initial payload includes React + all 140 records even if a user reads 5. Grep lazy|Suspense|import( over src/ exits 1. Immutable cache: vercel.json:12–16. SpeedInsights: src/main.tsx:3,10.</aside>
+  </section>
+
+  <!-- ===== SLIDE 25 — Security threat model ===== -->
+  <section class="slide" data-sec="deep" aria-label="Security threat model">
+    <h2>Security threat model</h2>
+    <ul>
+      <li><strong>Static content</strong> — no server, no auth, no database, no network writes</li>
+      <li><strong>Trust boundary:</strong> localStorage is user-controlled — a user can corrupt their own favorites</li>
+      <li><strong>Defensive read:</strong> <code>src/App.tsx:44–49</code> — try/catch around <code>JSON.parse(localStorage.getItem(...))</code>, returns <code>[]</code> on failure</li>
+      <li><strong>License:</strong> GPL-3.0-or-later (<code>package.json:5</code>, <code>LICENSE:1</code>)</li>
+      <li>No CSP headers configured; no sanitization of user-visible strings (all content is authored, not user-generated)</li>
+    </ul>
+    <p style="margin-top:0.8em"><small>App.tsx:44-49 (favorites read) · App.tsx:63-69 (favorites write) · package.json:5 (license)</small></p>
+    <aside class="notes">~1.5 min. Say: "the threat surface is a single static page — no auth, no network writes, no API keys." Anchors: favorites defensive read src/App.tsx:44–49 and write :63–69; license package.json:5, LICENSE:1–2 (GPL-3.0-or-later). Honest gaps: bare setItem calls with no try/catch at src/utils/dailyTasks.ts:46,73–79,84–89; no CSP headers configured (facts §5, §9).</aside>
+  </section>
+
+  <!-- ===== SLIDE 26 — Testing ===== -->
+  <section class="slide" data-sec="deep" aria-label="Testing coverage">
+    <h2>Testing</h2>
+    <p style="margin-bottom:0.5em"><strong>6 files / 47 tests / 3.71s</strong> (fresh run 2026-09-10)</p>
+    <ul>
+      <li><code>arabic.test.ts</code> — 12 tests (tashkeel removal, normalization, search, display, digit conversion)</li>
+      <li><code>dailyTasks.test.ts</code> — 12 tests (date keys, persistence, streak branches, effective streak)</li>
+      <li><code>data.test.ts</code> — 11 tests (140 count, field validation, chapter counts, determinism, variety)</li>
+      <li><code>share.test.ts</code> — 7 tests (each formatted field in the share string)</li>
+      <li><code>speech.test.ts</code> — 4 tests (speak, stop, subscribe)</li>
+      <li><code>App.test.tsx</code> — 1 test (renders brand h1 + at least one <code>&lt;article&gt;</code>)</li>
+    </ul>
+    <p style="margin-top:0.6em"><strong>What is NOT tested:</strong> no E2E (no Playwright/Cypress), no visual regression, no modal interaction tests, no filtering/search tests, no favorites persistence tests. <code>App.test.tsx</code> is a single smoke test (16 lines total).</p>
+    <aside class="notes">~2.5 min. Say: "47 tests pass and the UI layer is still only one smoke test deep — that is the honest reading." Fresh run facts §7: 6 files / 47 tests / 3.71s; per-file speech 4, share 7, dailyTasks 12, arabic 12, data 11, App 1. Anchor the gaps: src/App.test.tsx:6-15 is the single it() block (16-line file); no E2E anywhere (facts §9). Tease roadmap item 5, the golden-path E2E smoke (slide 30).</aside>
+  </section>
+
+  <!-- ===== SLIDE 27 — Live demo divider ===== -->
+  <section class="slide" data-sec="demo" aria-label="Live demo" style="background:var(--ink);color:var(--cream)">
+    <p style="font-family:var(--font-code);font-size:clamp(0.8rem,0.8vw+0.5rem,1.1rem);letter-spacing:0.14em;color:var(--gold);text-transform:uppercase;margin-bottom:0.5em">Live demo</p>
+    <h1 style="margin-bottom:0.4em">Kunuz, running</h1>
+    <p style="font-size:clamp(1.05rem,1.1vw+0.75rem,1.45rem);margin-bottom:1.1em">Following <code>presentation/demo-script.md</code> — five segments, all in the live app</p>
+    <ol class="datapath">
+      <li><strong>Filter</strong><br><small style="color:var(--cream-dim)">chapter pills</small></li>
+      <li><strong>Search</strong><br><small style="color:var(--cream-dim)">normalized Arabic</small></li>
+      <li><strong>Persist</strong><br><small style="color:var(--cream-dim)">favorites + streak</small></li>
+      <li><strong>Daily treasure</strong><br><small style="color:var(--cream-dim)">day-of-year pick</small></li>
+      <li><strong>Checklist</strong><br><small style="color:var(--cream-dim)">8 tasks + confetti</small></li>
+    </ol>
+    <p style="margin-top:1.2em"><small style="color:var(--cream-dim)">Buffer: if time runs short this demo compresses to ~5 minutes — filter→search as one pass, then daily treasure + checklist.</small></p>
+    <aside class="notes">~1 min. Divider — land and move on. Anchor each segment to code: filter src/App.tsx:94-121 (chapter constraint), search src/utils/arabic.ts:22-27 + src/App.tsx:111-117 (field coverage), persist localStorage keys (src/App.tsx:45, src/utils/dailyTasks.ts:1-3), daily treasure src/data/index.ts:48-55, checklist src/components/DailyChecklistModal.tsx. Say: "filter → search → persist → daily treasure → checklist, straight from the running app." Buffer cue on screen: the whole walkthrough can compress to ~5 minutes.</aside>
+  </section>
+
+  <!-- ===== SLIDE 28 — Trade-offs: gained / paid ===== -->
+  <section class="slide" data-sec="tradeoffs" aria-label="Trade-offs — gained vs paid">
+    <h2>Trade-offs: gained vs paid</h2>
+    <div style="display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:0.7rem 1rem;font-size:clamp(0.8rem,0.85vw+0.5rem,1.1rem);line-height:1.4;margin-top:0.9em">
+      <div style="font-weight:700;padding-bottom:0.3em;border-bottom:2px solid var(--gold)">Decision</div>
+      <div style="font-weight:700;color:var(--gold);padding-bottom:0.3em;border-bottom:2px solid var(--gold)">Gained</div>
+      <div style="font-weight:700;padding-bottom:0.3em;border-bottom:2px solid var(--gold)">Paid</div>
+      <div><strong>Static typed data</strong><br><small>src/data/index.ts:8–13</small></div>
+      <div>Offline-capable · verifiable by tests · zero-latency</div>
+      <div>Content updates need a rebuild · ~2k lines of TS data</div>
+      <div><strong>No router</strong><br><small>src/App.tsx:33</small></div>
+      <div>Simplicity · no route-state sync</div>
+      <div>No deep links · no shareable filtered views</div>
+      <div><strong>localStorage</strong><br><small>src/App.tsx:45</small></div>
+      <div>Zero-backend persistence</div>
+      <div>No cross-device sync · ~5MB quota · user-clearable</div>
+      <div><strong>CSR-only</strong><br><small>src/main.tsx:7</small></div>
+      <div>Dead-simple deploy · one static host</div>
+      <div>Empty first paint until JS loads — dist/ JS 454.79&nbsp;kB (gzip 128.69), facts §8</div>
+    </div>
+    <aside class="notes">~2 min. Open with the frame: "four decisions, each one a gained/paid pair — nothing here is free." Row anchors: static typed data src/data/index.ts:8-13 (parts spread) + 4 part files × 35 records = 140, ~2k lines (1,976 lines across the 4 part files, verified wc — facts §1); no router src/App.tsx:33 (tab union), rg evidence exit 1 (facts §9); localStorage key sunnah-favorites src/App.tsx:45, ~5MB/user-clearable honesty points (facts §5); CSR src/main.tsx:7 createRoot, dist/ JS 454.79 kB gzip 128.69, total dist/ 497K (facts §8 — dated snapshot; rerun pnpm build for fresh numbers).</aside>
+  </section>
+
+  <!-- ===== SLIDE 29 — Known limitations & risks ===== -->
+  <section class="slide" data-sec="tradeoffs" aria-label="Known limitations and risks">
+    <h2>Known limitations &amp; risks</h2>
+    <ul>
+      <li><strong>Dead deps:</strong> <code>express</code>, <code>@google/genai</code>, <code>dotenv</code> (package.json:26,19,25) — AI Studio leftovers, never imported; <code>vite</code> duplicated in deps + devDeps (package.json:31,45)</li>
+      <li><strong>Timezone-dependent daily pick:</strong> <code>getDailyTreasure</code> uses the local day-of-year, so the "same day" can differ across timezones (src/data/index.ts:48–55)</li>
+      <li><strong>No PWA/offline story</strong> beyond browser cache — no service worker, no manifest, no workbox (facts §9)</li>
+      <li><strong>Single-maintainer data entry:</strong> 1,976 lines across 4 hand-authored part files; tests gate structure, not content values</li>
+      <li><strong>"100% authentic" claim</strong> is UI copy, not test-verified — tests only assert <code>grade</code> is a non-empty string (data.test.ts:45–52; src/App.tsx:199–213)</li>
+    </ul>
+    <aside class="notes">~2 min. Set the tone: "five risks, each with a source line — we are not pretending any of them away." Anchors: dead deps package.json:19,25,26 (+ motion :28); note the precise wording — only vite is duplicated; @tailwindcss/vite (:20) and tailwindcss (:42) are distinct packages (facts §9); timezone pick src/data/index.ts:48-55, same-day determinism tested at data.test.ts:89-91 but local-time dependence is inherent; no PWA — public/ contains only assets/, rg for serviceWorker|manifest|workbox exits 1 (facts §9); 100% claim src/App.tsx:199-213 (stats grid ١٤٠/٩/١٠٠٪) vs grade non-empty only at data.test.ts:45-52 (facts §1 caution).</aside>
+  </section>
+
+  <!-- ===== SLIDE 30 — Roadmap, risk-ranked ===== -->
+  <section class="slide" data-sec="roadmap" aria-label="Roadmap — risk-ranked">
+    <h2>Roadmap, risk-ranked</h2>
+    <p style="margin-bottom:1.1em">Ordered by risk reduction, not feature appeal — each step makes the next one safer:</p>
+    <ol style="line-height:1.45">
+      <li><strong>Remove dead deps</strong> — supply-chain hygiene + clarity. <small>Why first: pure subtraction, zero behavior change, shrinks the audit surface.</small></li>
+      <li><strong>Harden data integrity gates</strong> — schema validation across the 4 part files. <small>Why now: content is the product; current tests check structure, not value rules.</small></li>
+      <li><strong>Deep links via hash routing</strong> — undo a real limitation. <small>Why next: a contained UX win with no new backend or state model.</small></li>
+      <li><strong>PWA offline</strong> — matches the "treasure in your pocket" promise. <small>Why later: adds a service-worker layer; safer once validations lock the data down.</small></li>
+      <li><strong>E2E smoke of the golden path</strong> — filter → search → favorites → checklist. <small>Why last: proves the release pipeline once the feature set has settled.</small></li>
+    </ol>
+    <aside class="notes">~3 min. Lead with the principle: "risk reduction first, features second — each item is a prerequisite for the next one's value." Anchors: dead deps package.json:19,25,26,28 (facts §9); data gates what exists at data.test.ts:39-111 and the gap — non-empty only, no value rules — at data.test.ts:45-52; deep links vs no-router state at src/App.tsx:33 (facts §9); PWA gap facts §9; the E2E motivation is App.test.tsx being one smoke assert (src/App.test.tsx:6-15).</aside>
+  </section>
+
+  <!-- ===== SLIDE 31 — Closing ===== -->
+  <section class="slide" data-sec="closing" aria-label="Closing — thesis restated and open questions">
+    <h2>Closing</h2>
+    <p style="font-size:clamp(1.05rem,1.1vw+0.75rem,1.5rem);line-height:1.45">A knowledge app can be a <strong>static, verifiable artifact</strong>: typed data modules + pure functions + browser storage — no server, no database, no framework beyond React.</p>
+    <h3 style="margin-top:1.1em">Open questions for the team</h3>
+    <ul>
+      <li>Is hash-routing worth the complexity for this app?</li>
+      <li>Should data move to JSON + a validation schema?</li>
+      <li>What does PWA scope look like — full offline or cache-first?</li>
+      <li>How do we handle hadith text updates without a rebuild?</li>
+    </ul>
+    <aside class="notes">~2 min. Restate the thesis (slide 5) in one sentence, then pose the four questions genuinely and stop — the owner should not answer them here. Anchor each question to code: hash-routing vs tab-state ui src/App.tsx:33; JSON+validation vs the value-gap at data.test.ts:45-52; PWA scope vs the no-SW fact (facts §9); updates-without-rebuild vs content compiled into the bundle (facts §8, dist/ JS 454.79 kB).</aside>
+  </section>
+  <!-- SLIDES:END -->
+</main>
+<div id="progress" role="progressbar" aria-label="Slide progress" aria-valuemin="1" aria-valuemax="0" aria-valuenow="0"></div>
+<nav id="index" aria-label="Slide index" hidden></nav>
+<div class="controls">
+  <button id="prevBtn" aria-label="Previous slide" type="button">‹</button>
+  <button id="nextBtn" aria-label="Next slide" type="button">›</button>
+  <button id="notesBtn" aria-label="Toggle speaker notes" type="button">Notes</button>
+  <button id="fsBtn" aria-label="Toggle fullscreen" type="button">⛶</button>
+</div>
+<footer class="hud"><span data-role="slide-num"></span> / <span data-role="slide-total"></span></footer>
+<script>
+(function () {
+  "use strict";
+
+  /* ---- Presenter engine: keyboard, touch, hash, index, notes, fullscreen.
+     Every DOM query is guarded; an empty deck (zero sections) must not crash. ---- */
+
+  function byId(id) { return document.getElementById(id); }
+  function noop() {}
+
+  var deckEl = byId("deck");
+  var progressEl = byId("progress");
+  var indexEl = byId("index");
+  var prevBtn = byId("prevBtn");
+  var nextBtn = byId("nextBtn");
+  var notesBtn = byId("notesBtn");
+  var fsBtn = byId("fsBtn");
+  var numEl = document.querySelector('[data-role="slide-num"]');
+  var totalEl = document.querySelector('[data-role="slide-total"]');
+
+  var slides = (deckEl && deckEl.querySelectorAll)
+    ? Array.prototype.slice.call(deckEl.querySelectorAll(".slide"))
+    : [];
+  var count = slides.length;
+  var current = 0;
+  var indexBuilt = false;
+
+  function clamp(i) {
+    if (typeof i !== "number" || !isFinite(i)) return 0;
+    return Math.max(0, Math.min(count - 1, Math.round(i)));
+  }
+
+  function slideFromHash() {
+    var m = /^#slide-(\d+)$/.exec((location && location.hash) || "");
+    return m ? parseInt(m[1], 10) : null;
+  }
+
+  function setHash(n) {
+    var h = "#slide-" + (n + 1);
+    try {
+      history.replaceState(history.state, "", h);
+    } catch (err) {
+      /* some engines (e.g. jsdom on file://) refuse fragment replaceState */
+      try { location.hash = h; } catch (err2) { /* last resort: give up silently */ }
+    }
+  }
+
+  function markIndex() {
+    if (!indexEl || count === 0) return;
+    var buttons = indexEl.querySelectorAll("button[data-slide]");
+    for (var i = 0; i < buttons.length; i++) {
+      if (Number(buttons[i].getAttribute("data-slide")) === current) {
+        buttons[i].setAttribute("aria-current", "true");
+      } else {
+        buttons[i].removeAttribute("aria-current");
+      }
+    }
+  }
+
+  function render() {
+    for (var i = 0; i < count; i++) {
+      slides[i].classList.toggle("active", i === current);
+    }
+    if (numEl) numEl.textContent = String(count ? current + 1 : 0);
+    if (totalEl) totalEl.textContent = String(count);
+    if (progressEl) {
+      var pct = count ? ((current + 1) / count) * 100 : 0;
+      progressEl.style.setProperty("--fill", pct + "%");
+      progressEl.setAttribute("aria-valuemax", String(count));
+      progressEl.setAttribute("aria-valuenow", String(count ? current + 1 : 0));
+    }
+    markIndex();
+  }
+
+  function go(i, syncHash) {
+    current = clamp(i);
+    render();
+    if (syncHash !== false && count > 0) setHash(current);
+  }
+
+  function next() { go(current + 1); }
+  function prev() { go(current - 1); }
+
+  /* ---- Index overlay: built from section aria-labels ---- */
+
+  function makeGoHandler(i) {
+    return function () { closeIndex(); go(i); };
+  }
+
+  function buildIndex() {
+    if (indexBuilt || !indexEl) return;
+    indexBuilt = true;
+    if (count === 0) {
+      var empty = document.createElement("p");
+      empty.className = "index-empty";
+      empty.textContent = "No slides yet.";
+      indexEl.appendChild(empty);
+      return;
+    }
+    var list = document.createElement("ol");
+    for (var i = 0; i < count; i++) {
+      var item = document.createElement("li");
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("data-slide", String(i));
+      var n = document.createElement("span");
+      n.className = "n";
+      n.textContent = String(i + 1).padStart(2, "0");
+      var t = document.createElement("span");
+      t.className = "t";
+      t.textContent = slides[i].getAttribute("aria-label") || ("Slide " + (i + 1));
+      btn.appendChild(n);
+      btn.appendChild(t);
+      btn.addEventListener("click", makeGoHandler(i));
+      item.appendChild(btn);
+      list.appendChild(item);
+    }
+    indexEl.appendChild(list);
+  }
+
+  function indexIsOpen() { return !!indexEl && !indexEl.hidden; }
+
+  function openIndex() {
+    if (!indexEl) return;
+    buildIndex();
+    markIndex();
+    indexEl.hidden = false;
+    var cur = indexEl.querySelector('button[aria-current="true"]') ||
+              indexEl.querySelector("button");
+    if (cur && typeof cur.focus === "function") cur.focus();
+  }
+
+  function closeIndex() {
+    if (indexEl && !indexEl.hidden) indexEl.hidden = true;
+  }
+
+  function toggleIndex() {
+    if (indexIsOpen()) { closeIndex(); } else { openIndex(); }
+  }
+
+  /* ---- Notes & fullscreen ---- */
+
+  function toggleNotes() {
+    document.body.classList.toggle("show-notes");
+    if (notesBtn) notesBtn.setAttribute("aria-pressed", String(document.body.classList.contains("show-notes")));
+  }
+
+  function toggleFullscreen() {
+    var el = document.documentElement;
+    try {
+      if (document.fullscreenElement) {
+        if (document.exitFullscreen) {
+          var p = document.exitFullscreen();
+          if (p && p.catch) p.catch(noop);
+        }
+      } else if (el && el.requestFullscreen) {
+        var q = el.requestFullscreen();
+        if (q && q.catch) q.catch(noop);
+      }
+    } catch (err) {
+      /* fullscreen unavailable (file:// sandbox, embedded, etc.) */
+    }
+  }
+
+  /* ---- Keyboard ---- */
+
+  window.addEventListener("keydown", function (e) {
+    if (e.ctrlKey || e.altKey || e.metaKey || e.defaultPrevented) return;
+    var key = e.key || "";
+    var target = e.target;
+    var interactive = !!(
+      target &&
+      typeof target.closest === "function" &&
+      target.closest("input, textarea, select, [contenteditable], a, button")
+    );
+    /* Arrow/Home/End always drive the deck; letters & Space yield to native
+       behavior when an interactive element has focus (e.g. Space on a button). */
+    var deckKeys = key === "ArrowRight" || key === "ArrowLeft" ||
+                   key === "Home" || key === "End";
+    if (interactive && !deckKeys) return;
+    switch (key) {
+      case "ArrowRight": next(); e.preventDefault(); break;
+      case "ArrowLeft": prev(); e.preventDefault(); break;
+      case " ": case "Spacebar": next(); e.preventDefault(); break;
+      case "Home": go(0); e.preventDefault(); break;
+      case "End": go(count - 1); e.preventDefault(); break;
+      case "n": case "N": toggleNotes(); break;
+      case "i": case "I": toggleIndex(); break;
+      case "f": case "F": toggleFullscreen(); break;
+      case "Escape": closeIndex(); break;
+    }
+  });
+
+  /* ---- Touch swipe: >= 40px horizontal beats vertical drift ---- */
+
+  var touchX = null;
+  var touchY = null;
+
+  document.addEventListener("touchstart", function (e) {
+    touchX = null;
+    if (!e.touches || e.touches.length !== 1) return;
+    var t = e.target;
+    if (t && typeof t.closest === "function" &&
+        t.closest("#index, .notes, .controls")) return; /* let overlays scroll */
+    touchX = e.touches[0].clientX;
+    touchY = e.touches[0].clientY;
+  }, { passive: true });
+
+  document.addEventListener("touchend", function (e) {
+    if (touchX === null) return;
+    var t = e.changedTouches && e.changedTouches[0];
+    touchX = null;
+    if (!t) return;
+    var dx = t.clientX - touchX;
+    var dy = t.clientY - touchY;
+    if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) { next(); } else { prev(); }
+    }
+  }, { passive: true });
+
+  /* ---- Controls ---- */
+
+  if (nextBtn) nextBtn.addEventListener("click", next);
+  if (prevBtn) prevBtn.addEventListener("click", prev);
+  if (notesBtn) notesBtn.addEventListener("click", toggleNotes);
+  if (fsBtn) fsBtn.addEventListener("click", toggleFullscreen);
+
+  /* ---- Hash sync (#slide-N, 1-based) ---- */
+
+  window.addEventListener("hashchange", function () {
+    var n = slideFromHash();
+    if (n !== null) go(clamp(n - 1), false);
+  });
+
+  /* ---- Public API ---- */
+
+  window.deck = {
+    next: next,
+    prev: prev,
+    go: function (i) { go(i); },
+    toggleIndex: toggleIndex,
+    toggleNotes: toggleNotes,
+    toggleFullscreen: toggleFullscreen,
+    get count() { return count; }
+  };
+
+  /* ---- Init ---- */
+
+  var fromHash = slideFromHash();
+  if (fromHash !== null) current = clamp(fromHash - 1);
+  render();
+})();
+</script>
+</body>
+</html>
