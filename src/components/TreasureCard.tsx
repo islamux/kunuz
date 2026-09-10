@@ -117,7 +117,7 @@ export const TreasureCard: React.FC<TreasureCardProps> = ({
             </span>
 
             {chapter && (
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg ${chapter.color} border`}>
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-lg ${chapter.colorClasses} border`}>
                 <ChapterIcon icon={chapter.icon} className="h-3.5 w-3.5" />
                 <span>{chapter.shortName}</span>
               </span>

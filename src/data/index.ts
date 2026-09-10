@@ -12,14 +12,28 @@ export const ALL_TREASURES: Treasure[] = [
   ...TREASURES_PART_4
 ];
 
+export const TOTAL_TREASURES: number = ALL_TREASURES.length;
+
+export const CHAPTER_COUNTS: Record<ChapterId, number> = {
+  'daily-dhikr': 0,
+  'prayers-mosques': 0,
+  'expiation-repentance': 0,
+  'relief-ruqyah': 0,
+  'quran-virtues': 0,
+  'morals-relations': 0,
+  'charity-ongoing': 0,
+  'fasting-seasons': 0,
+  'manners-sunan': 0
+};
+
+for (const treasure of ALL_TREASURES) {
+  CHAPTER_COUNTS[treasure.chapterId] += 1;
+}
+
 export { CHAPTERS };
 
 export function getChapterById(id: ChapterId): Chapter | undefined {
   return CHAPTERS.find(c => c.id === id);
-}
-
-export function getTreasuresByChapter(chapterId: ChapterId): Treasure[] {
-  return ALL_TREASURES.filter(t => t.chapterId === chapterId);
 }
 
 export function getTreasureById(id: number): Treasure | undefined {
